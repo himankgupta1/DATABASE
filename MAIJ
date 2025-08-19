@@ -1,225 +1,139 @@
-DB CONNECT
+customer
+
+public class Customer {
+    private int id;
+    private String name;
+    private String email;
+
+    public Customer(int id, String name, String email) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    @Override
+    public String toString() {
+        return "Customer [ID=" + id + ", Name=" + name + ", Email=" + email + "]";
+    }
+}
+
+
+
+bank
+
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class Bank {
+
+    private Connection connection;
+
+    public Bank(Connection connection) {
+        this.connection = connection;
+    }
+
+    // Add new customer
+    public void addCustomer(Customer customer) {
+        String sql = "INSERT INTO CUSTOMER (id, name, email) VALUES (?, ?, ?)";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, customer.getId());
+            pstmt.setString(2, customer.getName());
+            pstmt.setString(3, customer.getEmail());
+            pstmt.executeUpdate();
+            System.out.println("Customer added successfully!");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Get all customers
+    public List<Customer> getAllCustomers() {
+        List<Customer> customers = new ArrayList<>();
+        String sql = "SELECT * FROM CUSTOMER";
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                Customer customer = new Customer(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("email")
+                );
+                customers.add(customer);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return customers;
+    }
+
+    // Delete customer
+    public void deleteCustomer(int id) {
+        String sql = "DELETE FROM CUSTOMER WHERE id = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            int rows = pstmt.executeUpdate();
+            if (rows > 0) {
+                System.out.println("Customer deleted successfully!");
+            } else {
+                System.out.println("Customer with ID " + id + " not found.");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+
+
+Dbconnect
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DbConnect {
-    private static final String URL = "jdbc:h2:tcp://localhost:9002/./mydb";
-    private static final String USER = "sa";
-    private static final String PASSWORD = "";
 
-    public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL, USER, PASSWORD);
-    }
-}
+    private static final String JDBC_URL = "jdbc:h2:tcp://localhost:9002/./mydb"; 
+    private static final String USERNAME = "sa"; 
+    private static final String PASSWORD = ""; 
 
-CUSTOMER
-
-public class Customer {
-    private int id;
-    private String name;
-    private String email;
-    private String contact;
-    private String accountType;
-
-    public Customer(int id, String name, String email, String contact, String accountType) {
-        this.id = id;
-        this.name = name;
-        this.email = email;
-        this.contact = contact;
-        this.accountType = accountType;
-    }
-
-    public int getId() { return id; }
-    public String getName() { return name; }
-    public String getEmail() { return email; }
-    public String getContact() { return contact; }
-    public String getAccountType() { return accountType; }
-
-    @Override
-    public String toString() {
-        return "Customer Id = " + id + 
-               ", Name = " + name + 
-               ", Email = " + email + 
-               ", Contact = " + contact + 
-               ", Account Type = " + accountType;
-    }
-}
-
-BANK
-
-import java.sql.*;
-import java.util.Scanner;
-
-public class Bank {
-
-    public void addCustomer() {
-        Scanner sc = new Scanner(System.in);
-
-        try (Connection conn = DbConnect.getConnection()) {
-            System.out.print("Enter name: ");
-            String name = sc.nextLine();
-            if (!name.matches("[a-zA-Z ]+")) {
-                throw new Exception("Name can only have alphabets.");
-            }
-
-            System.out.print("Enter email: ");
-            String email = sc.nextLine();
-            if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
-                throw new Exception("Invalid email format.");
-            }
-
-            System.out.print("Enter contact: ");
-            String contact = sc.nextLine();
-            if (!contact.matches("\\d{10}")) {
-                throw new Exception("Contact must be 10 digits.");
-            }
-
-            System.out.print("Enter account type (Savings/Current): ");
-            String accountType = sc.nextLine();
-            if (!(accountType.equalsIgnoreCase("Savings") || accountType.equalsIgnoreCase("Current"))) {
-                throw new Exception("Account type must be Savings or Current.");
-            }
-
-            String sql = "INSERT INTO CUSTOMER(name, email, contact, accountType) VALUES (?, ?, ?, ?)";
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, name);
-            ps.setString(2, email);
-            ps.setString(3, contact);
-            ps.setString(4, accountType);
-            ps.executeUpdate();
-
-            System.out.println("Customer added successfully!");
-        } catch (Exception e) {
-            System.out.println("Error adding customer: " + e.getMessage());
-        }
-    }
-
-    public void displayCustomers() {
-        try (Connection conn = DbConnect.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT * FROM CUSTOMER")) {
-
-            while (rs.next()) {
-                Customer c = new Customer(
-                        rs.getInt("id"),
-                        rs.getString("name"),
-                        rs.getString("email"),
-                        rs.getString("contact"),
-                        rs.getString("accountType")
-                );
-                System.out.println(c);
-            }
+    public static Connection getConnection() {
+        try {
+            return DriverManager.getConnection(JDBC_URL, USERNAME, PASSWORD);
         } catch (SQLException e) {
-            System.out.println("Error fetching customers: " + e.getMessage());
-        }
-    }
-
-    public void searchCustomer() {
-        Scanner sc = new Scanner(System.in);
-        System.out.print("Enter customer id: ");
-
-        try (Connection conn = DbConnect.getConnection()) {
-            int id = Integer.parseInt(sc.nextLine());
-
-            String sql = "SELECT * FROM CUSTOMER WHERE id = ?";
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-
-            if (rs.next()) {
-                Customer c = new Customer(
-                        rs.getInt("id"),
-                        rs.getString("name"),
-                        rs.getString("email"),
-                        rs.getString("contact"),
-                        rs.getString("accountType")
-                );
-                System.out.println(c);
-            } else {
-                System.out.println("No customer found with ID " + id);
-            }
-        } catch (NumberFormatException e) {
-            System.out.println("Customer ID must be an integer.");
-        } catch (SQLException e) {
-            System.out.println("Error searching customer: " + e.getMessage());
-        }
-    }
-
-    public void deleteCustomer() {
-        Scanner sc = new Scanner(System.in);
-        System.out.print("Enter customer id to delete: ");
-
-        try (Connection conn = DbConnect.getConnection()) {
-            int id = Integer.parseInt(sc.nextLine());
-
-            String sql = "DELETE FROM CUSTOMER WHERE id = ?";
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setInt(1, id);
-            int rows = ps.executeUpdate();
-
-            if (rows > 0) {
-                System.out.println("Customer deleted successfully.");
-            } else {
-                System.out.println("No customer found with ID " + id);
-            }
-        } catch (NumberFormatException e) {
-            System.out.println("Customer ID must be an integer.");
-        } catch (SQLException e) {
-            System.out.println("Error deleting customer: " + e.getMessage());
+            e.printStackTrace();
+            return null;
         }
     }
 }
 
 
-MAIN
+👉 Next Step for you:
 
+Run your Main.java (no changes needed).
 
-import java.util.Scanner;
+Then, in Bank.java, you can call methods like:
 
-public class Main {
-    public static void main(String[] args) {
-        Bank bank = new Bank();
-        Scanner sc = new Scanner(System.in);
-        int choice;
-
-        do {
-            System.out.println("\nWelcome to Standard Chartered Bank");
-            System.out.println("Please enter your choice");
-            System.out.println("1 for Add new Customer");
-            System.out.println("2 for Display Customers");
-            System.out.println("3 for Search Customer");
-            System.out.println("4 for Delete Customer");
-            System.out.println("5 for Exit");
-
-            choice = sc.nextInt();
-            sc.nextLine(); // consume newline
-
-            switch (choice) {
-                case 1 -> bank.addCustomer();
-                case 2 -> bank.displayCustomers();
-                case 3 -> bank.searchCustomer();
-                case 4 -> bank.deleteCustomer();
-                case 5 -> System.out.println("Exiting... Thank you!");
-                default -> System.out.println("Invalid choice. Please try again.");
-            }
-        } while (choice != 5);
-    }
-}
-
-
-Subject: Request for a Suitable Time to Connect Regarding Azure Push Issue
-
-Dear [Recipient’s Name],
-
-Good morning. I am currently facing an issue while pushing my files to Azure. Could you please let me know a convenient time for us to connect so that I can walk you through the problem?
-
-Looking forward to your guidance.
-
-Best regards,
-[Your Name]
-
+Bank bank = new Bank(connection);
+bank.addCustomer(new Customer(1, "John Doe", "john@example.com"));
+bank.getAllCustomers().forEach(System.out::println);
+bank.deleteCustomer(1);
 
 
 
