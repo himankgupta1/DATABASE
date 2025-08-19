@@ -1,195 +1,181 @@
+DB CONNECT
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+public class DbConnect {
+    private static final String URL = "jdbc:h2:tcp://localhost:9002/./mydb";
+    private static final String USER = "sa";
+    private static final String PASSWORD = "";
+
+    public static Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(URL, USER, PASSWORD);
+    }
+}
+
+CUSTOMER
+
+public class Customer {
+    private int id;
+    private String name;
+    private String email;
+    private String contact;
+    private String accountType;
+
+    public Customer(int id, String name, String email, String contact, String accountType) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.contact = contact;
+        this.accountType = accountType;
+    }
+
+    public int getId() { return id; }
+    public String getName() { return name; }
+    public String getEmail() { return email; }
+    public String getContact() { return contact; }
+    public String getAccountType() { return accountType; }
+
+    @Override
+    public String toString() {
+        return "Customer Id = " + id + 
+               ", Name = " + name + 
+               ", Email = " + email + 
+               ", Contact = " + contact + 
+               ", Account Type = " + accountType;
+    }
+}
+
+BANK
+
 import java.sql.*;
 import java.util.Scanner;
-import java.util.regex.Pattern;
 
-// ---- Custom Exceptions ----
-class InvalidNameException extends Exception {
-    public InvalidNameException(String msg) { super(msg); }
-}
-class InvalidEmailException extends Exception {
-    public InvalidEmailException(String msg) { super(msg); }
-}
-class InvalidContactException extends Exception {
-    public InvalidContactException(String msg) { super(msg); }
-}
-class InvalidAccountTypeException extends Exception {
-    public InvalidAccountTypeException(String msg) { super(msg); }
-}
+public class Bank {
 
-public class Main {
-    public static void main(String[] args) {
-        System.out.println("Hello world!");
+    public void addCustomer() {
+        Scanner sc = new Scanner(System.in);
 
-        // JDBC URL for H2 database
-        String jdbcURL = "jdbc:h2:tcp://localhost:9092/~/mydb"; // your DB
-        String username = "sa"; // default user
-        String password = "";   // default password
-
-        try (Connection connection = DriverManager.getConnection(jdbcURL, username, password)) {
-            if (connection != null) {
-                System.out.println("Database connected successfully.");
-                createTableIfNotExists(connection);
-
-                Scanner sc = new Scanner(System.in);
-                while (true) {
-                    System.out.println("\nWelcome to Standard Chartered Bank");
-                    System.out.println("1. Add new Customer");
-                    System.out.println("2. Display Customers");
-                    System.out.println("3. Search Customer");
-                    System.out.println("4. Delete Customer");
-                    System.out.println("5. Exit");
-                    System.out.print("Enter your choice: ");
-
-                    int choice;
-                    try {
-                        choice = Integer.parseInt(sc.nextLine());
-                    } catch (NumberFormatException e) {
-                        System.out.println("Invalid choice! Enter a number.");
-                        continue;
-                    }
-
-                    switch (choice) {
-                        case 1 -> addCustomer(connection, sc);
-                        case 2 -> displayCustomers(connection);
-                        case 3 -> searchCustomer(connection, sc);
-                        case 4 -> deleteCustomer(connection, sc);
-                        case 5 -> {
-                            System.out.println("Exiting... Goodbye!");
-                            sc.close();
-                            return;
-                        }
-                        default -> System.out.println("Invalid option. Try again.");
-                    }
-                }
-            } else {
-                System.out.println("Failed to connect to the database.");
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    // ---- Create Table ----
-    private static void createTableIfNotExists(Connection conn) throws SQLException {
-        String createTable = """
-                CREATE TABLE IF NOT EXISTS CUSTOMER(
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    name VARCHAR(50),
-                    email VARCHAR(100),
-                    contact VARCHAR(15),
-                    accountType VARCHAR(20)
-                );
-                """;
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute(createTable);
-        }
-    }
-
-    // ---- Add Customer ----
-    private static void addCustomer(Connection conn, Scanner sc) {
-        try {
+        try (Connection conn = DbConnect.getConnection()) {
             System.out.print("Enter name: ");
             String name = sc.nextLine();
-            if (!name.matches("[a-zA-Z ]+")) throw new InvalidNameException("Name must contain only alphabets.");
+            if (!name.matches("[a-zA-Z ]+")) {
+                throw new Exception("Name can only have alphabets.");
+            }
 
             System.out.print("Enter email: ");
             String email = sc.nextLine();
-            if (!Pattern.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$", email))
-                throw new InvalidEmailException("Invalid email format.");
+            if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+                throw new Exception("Invalid email format.");
+            }
 
-            System.out.print("Enter contact (10 digits): ");
+            System.out.print("Enter contact: ");
             String contact = sc.nextLine();
-            if (!contact.matches("\\d{10}")) throw new InvalidContactException("Contact must be 10 digits.");
+            if (!contact.matches("\\d{10}")) {
+                throw new Exception("Contact must be 10 digits.");
+            }
 
             System.out.print("Enter account type (Savings/Current): ");
             String accountType = sc.nextLine();
-            if (!(accountType.equalsIgnoreCase("Savings") || accountType.equalsIgnoreCase("Current")))
-                throw new InvalidAccountTypeException("Account type must be Savings or Current.");
-
-            String insert = "INSERT INTO CUSTOMER(name, email, contact, accountType) VALUES(?,?,?,?)";
-            try (PreparedStatement ps = conn.prepareStatement(insert, Statement.RETURN_GENERATED_KEYS)) {
-                ps.setString(1, name);
-                ps.setString(2, email);
-                ps.setString(3, contact);
-                ps.setString(4, accountType);
-                ps.executeUpdate();
-
-                ResultSet rs = ps.getGeneratedKeys();
-                if (rs.next()) {
-                    System.out.println("Customer added successfully with customer id " + rs.getInt(1));
-                }
+            if (!(accountType.equalsIgnoreCase("Savings") || accountType.equalsIgnoreCase("Current"))) {
+                throw new Exception("Account type must be Savings or Current.");
             }
 
-        } catch (InvalidNameException | InvalidEmailException | InvalidContactException | InvalidAccountTypeException e) {
-            System.out.println("Error: " + e.getMessage());
-        } catch (SQLException e) {
-            e.printStackTrace();
+            String sql = "INSERT INTO CUSTOMER(name, email, contact, accountType) VALUES (?, ?, ?, ?)";
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, name);
+            ps.setString(2, email);
+            ps.setString(3, contact);
+            ps.setString(4, accountType);
+            ps.executeUpdate();
+
+            System.out.println("Customer added successfully!");
+        } catch (Exception e) {
+            System.out.println("Error adding customer: " + e.getMessage());
         }
     }
 
-    // ---- Display Customers ----
-    private static void displayCustomers(Connection conn) {
-        String query = "SELECT * FROM CUSTOMER";
-        try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(query)) {
+    public void displayCustomers() {
+        try (Connection conn = DbConnect.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT * FROM CUSTOMER")) {
+
             while (rs.next()) {
-                System.out.println("Customer Id = " + rs.getInt("id") +
-                        ", Name = " + rs.getString("name") +
-                        ", Email = " + rs.getString("email") +
-                        ", Contact = " + rs.getString("contact") +
-                        ", AccountType = " + rs.getString("accountType"));
+                Customer c = new Customer(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("email"),
+                        rs.getString("contact"),
+                        rs.getString("accountType")
+                );
+                System.out.println(c);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.out.println("Error fetching customers: " + e.getMessage());
         }
     }
 
-    // ---- Search Customer ----
-    private static void searchCustomer(Connection conn, Scanner sc) {
-        try {
-            System.out.print("Enter customer id: ");
+    public void searchCustomer() {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Enter customer id: ");
+
+        try (Connection conn = DbConnect.getConnection()) {
             int id = Integer.parseInt(sc.nextLine());
 
-            String query = "SELECT * FROM CUSTOMER WHERE id=?";
-            try (PreparedStatement ps = conn.prepareStatement(query)) {
-                ps.setInt(1, id);
-                ResultSet rs = ps.executeQuery();
-                if (rs.next()) {
-                    System.out.println("Customer Id = " + rs.getInt("id") +
-                            ", Name = " + rs.getString("name") +
-                            ", Email = " + rs.getString("email") +
-                            ", Contact = " + rs.getString("contact") +
-                            ", AccountType = " + rs.getString("accountType"));
-                } else {
-                    System.out.println("Customer not found!");
-                }
+            String sql = "SELECT * FROM CUSTOMER WHERE id = ?";
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                Customer c = new Customer(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("email"),
+                        rs.getString("contact"),
+                        rs.getString("accountType")
+                );
+                System.out.println(c);
+            } else {
+                System.out.println("No customer found with ID " + id);
             }
         } catch (NumberFormatException e) {
-            System.out.println("Invalid input! Customer id must be an integer.");
+            System.out.println("Customer ID must be an integer.");
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.out.println("Error searching customer: " + e.getMessage());
         }
     }
 
-    // ---- Delete Customer ----
-    private static void deleteCustomer(Connection conn, Scanner sc) {
-        try {
-            System.out.print("Enter customer id to delete: ");
+    public void deleteCustomer() {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Enter customer id to delete: ");
+
+        try (Connection conn = DbConnect.getConnection()) {
             int id = Integer.parseInt(sc.nextLine());
 
-            String delete = "DELETE FROM CUSTOMER WHERE id=?";
-            try (PreparedStatement ps = conn.prepareStatement(delete)) {
-                ps.setInt(1, id);
-                int rows = ps.executeUpdate();
-                if (rows > 0) {
-                    System.out.println("Customer deleted successfully!");
-                } else {
-                    System.out.println("Customer not found!");
-                }
+            String sql = "DELETE FROM CUSTOMER WHERE id = ?";
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setInt(1, id);
+            int rows = ps.executeUpdate();
+
+            if (rows > 0) {
+                System.out.println("Customer deleted successfully.");
+            } else {
+                System.out.println("No customer found with ID " + id);
             }
         } catch (NumberFormatException e) {
-            System.out.println("Invalid input! Customer id must be an integer.");
+            System.out.println("Customer ID must be an integer.");
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.out.println("Error deleting customer: " + e.getMessage());
         }
     }
 }
+
+
+
+
+
+
+
+
