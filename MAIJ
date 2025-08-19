@@ -173,6 +173,40 @@ public class Bank {
 }
 
 
+MAIN
+
+
+import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) {
+        Bank bank = new Bank();
+        Scanner sc = new Scanner(System.in);
+        int choice;
+
+        do {
+            System.out.println("\nWelcome to Standard Chartered Bank");
+            System.out.println("Please enter your choice");
+            System.out.println("1 for Add new Customer");
+            System.out.println("2 for Display Customers");
+            System.out.println("3 for Search Customer");
+            System.out.println("4 for Delete Customer");
+            System.out.println("5 for Exit");
+
+            choice = sc.nextInt();
+            sc.nextLine(); // consume newline
+
+            switch (choice) {
+                case 1 -> bank.addCustomer();
+                case 2 -> bank.displayCustomers();
+                case 3 -> bank.searchCustomer();
+                case 4 -> bank.deleteCustomer();
+                case 5 -> System.out.println("Exiting... Thank you!");
+                default -> System.out.println("Invalid choice. Please try again.");
+            }
+        } while (choice != 5);
+    }
+}
 
 
 
